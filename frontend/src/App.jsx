@@ -5,7 +5,7 @@ import './App.css'; // We'll create this CSS file next
 import logo from './assets/logo.png'; 
 import { useNavigate } from 'react-router-dom';
 
-const ChatBox = ({ webhookId }) => {
+const ChatBox = () => {
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
   const [conversation, setConversation] = useState(null);
@@ -15,12 +15,12 @@ const ChatBox = ({ webhookId }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
-
+ const [webhookId, setWebhookId] = useState('5ae7e4f1-dbf0-4259-96b2-093f9c120afb');
   // Initialize connection
   useEffect(() => {
     const initChat = async () => {
       try {
-        const chatClient = await chat.Client.connect({ webhookId });
+        const chatClient = await chat.Client.connect({webhookId});
         setClient(chatClient);
         
         const { conversation } = await chatClient.createConversation({});

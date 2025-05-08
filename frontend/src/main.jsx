@@ -11,7 +11,7 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/chat" element={<ChatBox  webhookId="5ae7e4f1-dbf0-4259-96b2-093f9c120afb" />} />
+        <Route path="/chat" element={<ChatBox />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
