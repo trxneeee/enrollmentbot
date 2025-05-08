@@ -1,202 +1,234 @@
-import { useState, useEffect, useRef } from "react";
-import axios from "axios";
-import React from "react";
-import "./App.css"; // Import the CSS file
-import { IoSend } from "react-icons/io5";
-import { FaTrashAlt } from "react-icons/fa";
-import logo from "./assets/logo.png"; // update path if needed
+import React, { useState, useEffect, useRef } from 'react';
+import * as chat from '@botpress/chat';
+import _ from 'lodash';
+import './App.css'; // We'll create this CSS file next
+import logo from './assets/logo.png'; 
+import { useNavigate } from 'react-router-dom';
 
-
-
-function App() {
-  const [threads, setThreads] = useState([]); // Stores conversation threads
-  const [currentThread, setCurrentThread] = useState(null); // Active thread ID
+const ChatBox = ({ webhookId }) => {
+  const navigate = useNavigate();
+  const [client, setClient] = useState(null);
+  const [conversation, setConversation] = useState(null);
+  const [listener, setListener] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const chatboxRef = useRef(null);
+  const [inputValue, setInputValue] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
 
+  // Initialize connection
   useEffect(() => {
-    loadThreads(); // Load saved threads on startup
-  }, []);
-
-  const loadThreads = () => {
-    const savedThreads = JSON.parse(localStorage.getItem("threads")) || [];
-    setThreads(savedThreads);
-  };
-
-  const saveThreads = (updatedThreads) => {
-    localStorage.setItem("threads", JSON.stringify(updatedThreads));
-  };
-
-  const createNewThread = () => {
-    const newThread = {
-      threadNumber: Date.now().toString(),
-      messages: [],
+    const initChat = async () => {
+      try {
+        const chatClient = await chat.Client.connect({ webhookId });
+        setClient(chatClient);
+        
+        const { conversation } = await chatClient.createConversation({});
+        setConversation(conversation);
+        
+        const conversationListener = await chatClient.listenConversation({
+          id: conversation.id,
+        });
+        
+        setListener(conversationListener);
+        setIsConnected(true);
+        
+        // Load initial messages
+        const { messages } = await chatClient.listMessages({
+          conversationId: conversation.id,
+        });
+        
+        setMessages(_.sortBy(messages, (m) => new Date(m.createdAt).getTime()));
+        
+        // Set up real-time listener
+        conversationListener.on('message_created', (ev) => {
+          if (ev.userId === chatClient.user.id) return;
+          
+          setIsTyping(false);
+          setMessages(prev => [...prev, ev]);
+        });
+        
+        conversationListener.on('typing', (ev) => {
+          if (ev.userId === chatClient.user.id) return;
+          setIsTyping(ev.isTyping);
+        });
+        
+        conversationListener.on('error', (err) => {
+          console.error('Connection error:', err);
+          setIsConnected(false);
+          handleReconnect();
+        });
+        
+      } catch (err) {
+        console.error('Initialization error:', err);
+      }
     };
-    setThreads((prev) => {
-      const updatedThreads = [newThread, ...prev];
-      saveThreads(updatedThreads);
-      return updatedThreads;
-    });
-    setCurrentThread(newThread.threadNumber);
-    setMessages([]);
-  };
-
-  const loadThreadMessages = (threadNumber) => {
-    const thread = threads.find((t) => t.threadNumber === threadNumber);
-    if (thread) {
-      setCurrentThread(threadNumber);
-      setMessages(thread.messages);
+    
+    if (webhookId) {
+      initChat();
     }
-  };
-
-  const deleteThread = (threadNumberToDelete) => {
-    const updatedThreads = threads.filter(thread => thread.threadNumber !== threadNumberToDelete);
-    setThreads(updatedThreads);
-    saveThreads(updatedThreads);
+    
+    return () => {
+      if (listener) {
+        listener.disconnect();
+      }
+    };
+  }, [webhookId]);
   
-    // Clear messages if the deleted thread was the current one
-    if (threadNumberToDelete === currentThread) {
-      setCurrentThread(null);
-      setMessages([]);
+  const handleReconnect = async () => {
+    let retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries && !isConnected) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
+        await listener.connect();
+        setIsConnected(true);
+        return;
+      } catch (err) {
+        retries++;
+        console.error(`Reconnect attempt ${retries} failed`, err);
+      }
     }
+    
+    console.error('Max reconnection attempts reached');
   };
   
-
-  const sendMessage = async (message) => {
-    if (!message.trim()) return;
-  
-    let newThreadCreated = false;
-  
-    if (!currentThread) {
-      const newThread = {
-        threadNumber: Date.now().toString(),
-        messages: [{ text: message, sender: "user" }],
-      };
-      setThreads((prev) => {
-        const updatedThreads = [newThread, ...prev];
-        saveThreads(updatedThreads);
-        return updatedThreads;
-      });
-      setCurrentThread(newThread.threadNumber);
-      setMessages([{ text: message, sender: "user" }]);
-      newThreadCreated = true;
-    } else {
-      setMessages((prev) => [...prev, { text: message, sender: "user" }]);
-    }
-  
+  const sendMessage = async () => {
+    if (!inputValue.trim() || !client || !conversation) return;
+    
+    const messageText = inputValue.trim();
+    setInputValue('');
+    
+    // Add user message to UI immediately
+    const userMessage = {
+      id: `temp-${Date.now()}`,
+      userId: client.user.id,
+      payload: { type: 'text', text: messageText },
+      createdAt: new Date().toISOString(),
+      direction: 'outgoing'
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+    
     try {
-      const response = await axios.post("http://127.0.0.1:5000/api/chat", {
-        message: message,
-        thread_number: currentThread,
+      await client.createMessage({
+        conversationId: conversation.id,
+        payload: {
+          type: 'text',
+          text: messageText,
+        },
       });
-  
-      const botMessage = { text: response.data.reply, sender: "bot" };
-  
-      setMessages((prev) => [...prev, botMessage]);
-  
-      setThreads((prev) => {
-        const updatedThreads = prev.map((thread) =>
-          thread.threadNumber === currentThread
-            ? { ...thread, messages: [...thread.messages, { text: message, sender: "user" }, botMessage] }
-            : thread
-        );
-        saveThreads(updatedThreads);
-        return updatedThreads;
-      });
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => [...prev, { text: "Error connecting to chatbot.", sender: "bot" }]);
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setIsTyping(false);
     }
-  
-    setInput("");
   };
   
-
-  useEffect(() => {
-    if (chatboxRef.current) {
-      chatboxRef.current.scrollTop = chatboxRef.current.scrollHeight;
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
+  };
+  
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+  
+  const formatMessage = (msg) => {
+    if (msg.payload.type === 'text') {
+      return msg.payload.text.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #e60000;">$1</strong>') // bold
+      .replace(/\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #e60000;"><strong>$1</strong></a>') // markdown links
+      .replace(/\n/g, '<br />'); // newlines;
+    }
+    // Add support for other message types (images, cards, etc.)
+    return JSON.stringify(msg.payload);
+  };
+  
+  const formatTime = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="app-container">
-      {/* Sidebar for Threads */}
-      <div className="sidebar">
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
-  <img src={logo} alt="Logo" style={{ maxWidth: "100%", height: "100px", objectFit: "contain" }} />
-</div>
-        <button className="new-chat-button" onClick={createNewThread}>
-          + New Chat
-        </button>
-        <ul>
-  {threads
-    .filter((thread) => thread.messages.length > 0)
-    .map((thread) => {
-      const firstMessage = thread.messages[0].text;
-      return (
-        <li
-          key={thread.threadNumber}
-          className={thread.threadNumber === currentThread ? "active-thread" : "inactive-thread"}
-        >
-          <span onClick={() => loadThreadMessages(thread.threadNumber)} style={{ cursor: "pointer", flex: 1 }}>
-            {firstMessage.length > 25 ? firstMessage.substring(0, 25) + "..." : firstMessage}
-          </span>
-          <button
-  onClick={() => deleteThread(thread.threadNumber)}
-  style={{
-    marginLeft: "10px",
-    background: "none",
-    border: "none",
-    color: "red",
-    cursor: "pointer"
-  }}
-  title="Delete this thread"
->
-  <FaTrashAlt size={16} />
-</button>
-
-        </li>
-      );
-    })}
-</ul>
+    <div className="chat-wrapper">
+    <div className="chat-container">
+      <div className="chat-header">
+        <div className="status-indicator">
+          <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+          {isConnected ? 'Online' : 'Connecting...'}
+        </div>
+        <h2>Enrollment Chat AI Support</h2>
+        <img
+      src={logo}
+      alt="Logo"
+      className="logo"
+      style={{ cursor: 'pointer' }}
+      onClick={() => navigate('/')}
+    />
       </div>
-
-      {/* Chatbox */}
-      <div className="chat-container">
-        <h2></h2>
-        <div className="chatbox" ref={chatboxRef}>
-          {messages.map((msg, index) => (
-            <div key={index} className={`message-container ${msg.sender === "user" ? "user-message" : "bot-message"}`}>
-              <p className={`message-bubble ${msg.sender === "user" ? "user-bubble" : "bot-bubble"}`}>
-                <strong>{msg.sender === "user" ? "You" : "Bot"}:</strong>{" "}
-                <span dangerouslySetInnerHTML={{ __html: String(msg.text).replace(/\n/g, "<br />") }} />
-              </p>
+      <div className="messages-container">
+        {messages.length === 0 ? (
+          <div className="empty-state">
+            <div className="welcome-message">
+              <h3>Hello there!</h3>
+              <p>How can I help you today?</p>
             </div>
-          ))}
-        </div>
-
-        {/* Input & Send Button */}
-        <div className="input-container">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                sendMessage(input);
-              }
-            }}
-            placeholder="Type a prompt..."
-            className="chat-input"
-          />
-          <button onClick={() => sendMessage(input)} className="send-button" title="Send">
-  <IoSend size={20} />
-</button>
-        </div>
+          </div>
+        ) : (
+          messages.map((message) => (
+            <div 
+              key={message.id} 
+              className={`message ${message.userId === client?.user.id ? 'outgoing' : 'incoming'}`}
+            >
+              <div className="message-content">
+                <div
+                  className="message-text"
+                  dangerouslySetInnerHTML={{ __html: formatMessage(message) }}
+                />
+                <span className="message-time">{formatTime(message.createdAt)}</span>
+              </div>
+            </div>
+          ))          
+        )}
+        {isTyping && (
+          <div className="message incoming">
+            <div className="message-content">
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      
+      <div className="input-area">
+        <textarea
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type your message here..."
+          disabled={!isConnected}
+        />
+        <button 
+          onClick={sendMessage} 
+          disabled={!inputValue.trim() || !isConnected}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+          </svg>
+        </button>
       </div>
     </div>
+    </div>
+    </div>
   );
-}
+};
 
-export default App;
+export default ChatBox;

@@ -1,0 +1,132 @@
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+/* Body Styling */
+.app-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #000000, #1a1a1a, #333333);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.auth-container {
+  text-align: center;
+  max-width: 600px;
+  padding: 20px;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.highlight {
+  color: #e60000; /* Dark Red */
+}
+
+.description {
+  font-size: 1.1rem;
+  color: #b3b3b3;
+  margin-bottom: 30px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: center;
+}
+
+.input-field {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  color: black;
+}
+
+.input-field:focus {
+  border: 2px solid #e60000;
+}
+
+.start-chat-btn {
+  padding: 15px 30px;
+  font-size: 1.1rem;
+  background-color: #e60000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.start-chat-btn:hover {
+  background-color: #cc0000;
+}
+
+.help-text {
+  margin-top: 30px;
+  color: #b3b3b3;
+  font-size: 0.9rem;
+}
+
+.help-list {
+  list-style-type: decimal;
+  padding-left: 20px;
+  text-align: left;
+}
+
+.help-list li {
+  margin-bottom: 5px;
+}
+
+.chat-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.reset-button-wrapper {
+  margin-top: 20px;
+}
+
+.reset-chat-btn {
+  padding: 10px 20px;
+  font-size: 1rem;
+  background-color: #333333;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.reset-chat-btn:hover {
+  background-color: #4d4d4d;
+}
+.logo-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.logo-image {
+  width: 120px;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
