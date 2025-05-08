@@ -1,11 +1,15 @@
 // App.jsx
-import React from 'react';
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import ChatBox from "./ChatBox.jsx";
+import HomePage from "./HomePage.jsx";
 
 const App = () => {
   return (
-    <div style={{ backgroundColor: 'black', height: '100vh', width: '100vw' }}>
-      {/* Your content can go here */}
-    </div>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/chat" element={<ChatBox />} />
+    </Routes>
   );
 };
 

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import ChatBox from './App';
 import './HomePage.css';  // Custom CSS for styling
 import { useNavigate } from "react-router-dom";
 import logo from './assets/logo.png';
 
-const App = () => {
+const HomePage = () => {
   const [webhookId, setWebhookId] = useState('');
   const [chatStarted, setChatStarted] = useState(false);
   const navigate = useNavigate();
   const handleStartChat = (e) => {
-      navigate("/chat");
+    e.preventDefault(); // ⬅️ prevent page reload
+    navigate("/chat");
   };
 
   return (
@@ -49,4 +49,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default HomePage;
