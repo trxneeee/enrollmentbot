@@ -14,7 +14,7 @@ const ChatBox = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
- const [webhookId, setWebhookId] = useState('5ae7e4f1-dbf0-4259-96b2-093f9c120afb');
+ const [webhookId, setWebhookId] = useState('87d3787c-2df7-4955-90ac-7ce3d646d2b0');
   // Initialize connection
   useEffect(() => {
     const initChat = async () => {
