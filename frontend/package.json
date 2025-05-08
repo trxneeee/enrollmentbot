@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@botpress/chat": "^0.5.1",
-    "@botpress/webchat": "2.3",
+    "@botpress/webchat": "^1.1.1",
     "@tailwindcss/postcss": "^4.1.5",
     "axios": "^1.8.3",
     "file-saver": "^2.0.5",
