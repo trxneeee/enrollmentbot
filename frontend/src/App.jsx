@@ -16,64 +16,6 @@ const ChatBox = () => {
   const messagesEndRef = useRef(null);
  const [webhookId, setWebhookId] = useState('5ae7e4f1-dbf0-4259-96b2-093f9c120afb');
   // Initialize connection
-  useEffect(() => {
-    const initChat = async () => {
-      try {
-        const chat = await import('@botpress/chat');
-        const chatClient = await chat.Client.connect({webhookId});
-        setClient(chatClient);
-        
-        const { conversation } = await chatClient.createConversation({});
-        setConversation(conversation);
-        
-        const conversationListener = await chatClient.listenConversation({
-          id: conversation.id,
-        });
-        
-        setListener(conversationListener);
-        setIsConnected(true);
-        
-        // Load initial messages
-        const { messages } = await chatClient.listMessages({
-          conversationId: conversation.id,
-        });
-        
-        setMessages(_.sortBy(messages, (m) => new Date(m.createdAt).getTime()));
-        
-        // Set up real-time listener
-        conversationListener.on('message_created', (ev) => {
-          if (ev.userId === chatClient.user.id) return;
-          
-          setIsTyping(false);
-          setMessages(prev => [...prev, ev]);
-        });
-        
-        conversationListener.on('typing', (ev) => {
-          if (ev.userId === chatClient.user.id) return;
-          setIsTyping(ev.isTyping);
-        });
-        
-        conversationListener.on('error', (err) => {
-          console.error('Connection error:', err);
-          setIsConnected(false);
-          handleReconnect();
-        });
-        
-      } catch (err) {
-        console.error('Initialization error:', err);
-      }
-    };
-    
-    if (webhookId) {
-      initChat();
-    }
-    
-    return () => {
-      if (listener) {
-        listener.disconnect();
-      }
-    };
-  }, [webhookId]);
   
   const handleReconnect = async () => {
     let retries = 0;
