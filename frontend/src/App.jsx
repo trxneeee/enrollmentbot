@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import * as chat from '@botpress/chat';
 import _ from 'lodash';
 import './App.css'; // We'll create this CSS file next
 import logo from './assets/logo.png'; 
@@ -20,6 +19,7 @@ const ChatBox = () => {
   useEffect(() => {
     const initChat = async () => {
       try {
+        const chat = await import('@botpress/chat');
         const chatClient = await chat.Client.connect({webhookId});
         setClient(chatClient);
         
